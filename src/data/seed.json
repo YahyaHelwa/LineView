@@ -1,0 +1,22 @@
+{
+  "stations": [
+    { "id": "st-10", "name": "Busbar cutting & bending", "status": "running", "operator": "A. Yılmaz", "currentOrderId": "wo-2041", "plannedMinutes": 420, "runMinutes": 388, "idealCycleSec": 95, "totalCount": 221, "goodCount": 218, "updatedAt": "2026-10-30T09:00:00Z" },
+    { "id": "st-20", "name": "Panel frame assembly", "status": "running", "operator": "M. Demir", "currentOrderId": "wo-2041", "plannedMinutes": 420, "runMinutes": 371, "idealCycleSec": 610, "totalCount": 32, "goodCount": 31, "updatedAt": "2026-10-30T09:00:00Z" },
+    { "id": "st-30", "name": "Secondary wiring", "status": "down", "operator": "E. Kaya", "currentOrderId": "wo-2043", "plannedMinutes": 420, "runMinutes": 290, "idealCycleSec": 840, "totalCount": 18, "goodCount": 16, "updatedAt": "2026-10-30T09:00:00Z" },
+    { "id": "st-40", "name": "Circuit-breaker installation", "status": "idle", "operator": "S. Arslan", "currentOrderId": null, "plannedMinutes": 420, "runMinutes": 340, "idealCycleSec": 480, "totalCount": 37, "goodCount": 37, "updatedAt": "2026-10-30T09:00:00Z" },
+    { "id": "st-50", "name": "Routine testing", "status": "running", "operator": "B. Şahin", "currentOrderId": "wo-2042", "plannedMinutes": 420, "runMinutes": 402, "idealCycleSec": 720, "totalCount": 30, "goodCount": 27, "updatedAt": "2026-10-30T09:00:00Z" },
+    { "id": "st-60", "name": "Labeling & packaging", "status": "maintenance", "operator": "C. Öztürk", "currentOrderId": null, "plannedMinutes": 420, "runMinutes": 210, "idealCycleSec": 300, "totalCount": 35, "goodCount": 35, "updatedAt": "2026-10-30T09:00:00Z" }
+  ],
+  "workOrders": [
+    { "id": "wo-2041", "product": "MV switchgear panel, 24 kV, type A", "quantity": 40, "completed": 31, "due": "2026-11-02", "stationId": "st-20", "priority": "high" },
+    { "id": "wo-2042", "product": "MV switchgear panel, 12 kV, type B", "quantity": 36, "completed": 27, "due": "2026-11-04", "stationId": "st-50", "priority": "normal" },
+    { "id": "wo-2043", "product": "Ring main unit, 3-way", "quantity": 24, "completed": 9, "due": "2026-10-31", "stationId": "st-30", "priority": "high" },
+    { "id": "wo-2044", "product": "Busbar set, 1250 A", "quantity": 120, "completed": 120, "due": "2026-10-29", "stationId": "st-10", "priority": "low" },
+    { "id": "wo-2045", "product": "MV switchgear panel, 36 kV, type C", "quantity": 18, "completed": 0, "due": "2026-11-09", "stationId": "st-40", "priority": "normal" }
+  ],
+  "defects": [
+    { "id": "df-301", "stationId": "st-30", "workOrderId": "wo-2043", "category": "wiring", "severity": "major", "description": "Wrong ferrule size on two secondary terminals of X1 strip.", "status": "open", "createdAt": "2026-10-30T07:42:00Z" },
+    { "id": "df-302", "stationId": "st-50", "workOrderId": "wo-2042", "category": "test-failure", "severity": "critical", "description": "Insulation resistance below limit on phase L2 during routine test.", "status": "open", "createdAt": "2026-10-30T08:15:00Z" },
+    { "id": "df-303", "stationId": "st-10", "workOrderId": "wo-2044", "category": "mechanical", "severity": "minor", "description": "Burr on bend edge of busbar B-14, deburred and re-checked.", "status": "closed", "createdAt": "2026-10-29T13:05:00Z" }
+  ]
+}
