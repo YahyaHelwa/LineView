@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Defect, Station, WorkOrder } from '../types'
-import { computeOee, formatPercent, summarize } from './metrics'
+import { addDaysIso, computeOee, formatPercent, oeeTone, orderState, summarize } from './metrics'
 
 const station = (over: Partial<Station> = {}): Station => ({
   id: 'st-1',
@@ -70,5 +70,33 @@ describe('formatPercent', () => {
   it('formats and clamps', () => {
     expect(formatPercent(0.4567, 1)).toBe('45.7%')
     expect(formatPercent(1.4)).toBe('100%')
+  })
+})
+
+describe('oeeTone', () => {
+  it('is ok at or above the 65% target, warn from 45%, alarm below', () => {
+    expect(oeeTone(0.65)).toBe('ok')
+    expect(oeeTone(0.5)).toBe('warn')
+    expect(oeeTone(0.44)).toBe('alarm')
+  })
+})
+
+describe('orderState', () => {
+  const order = (over: Partial<WorkOrder> = {}): WorkOrder => ({
+    id: 'wo-1', product: 'A', quantity: 10, completed: 5, due: '2026-11-05', stationId: 'st-1', priority: 'normal', ...over,
+  })
+  const today = '2026-11-02'
+  const soon = addDaysIso(new Date('2026-11-02T12:00:00Z'), 3)
+
+  it('classifies orders by completion and due date', () => {
+    expect(soon).toBe('2026-11-05')
+    expect(orderState(order({ completed: 10 }), today, soon)).toBe('complete')
+    expect(orderState(order({ due: '2026-11-01' }), today, soon)).toBe('overdue')
+    expect(orderState(order({ due: '2026-11-05' }), today, soon)).toBe('due-soon')
+    expect(orderState(order({ due: '2026-11-20' }), today, soon)).toBe('on-track')
+  })
+
+  it('never calls a finished order overdue', () => {
+    expect(orderState(order({ completed: 10, due: '2026-10-01' }), today, soon)).toBe('complete')
   })
 })

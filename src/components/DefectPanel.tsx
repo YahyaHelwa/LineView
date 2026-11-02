@@ -13,6 +13,9 @@ interface Props {
   onClose: (id: string) => Promise<void>
 }
 
+const formatStamp = (iso: string) =>
+  new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+
 const EMPTY: NewDefect = { stationId: '', workOrderId: '', category: 'wiring', severity: 'minor', description: '' }
 
 export function DefectPanel({ stations, orders, defects, onCreate, onClose }: Props) {
@@ -61,14 +64,56 @@ export function DefectPanel({ stations, orders, defects, onCreate, onClose }: Pr
   const stationName = (id: string) => stations.find((s) => s.id === id)?.name ?? id
 
   return (
-    <section className="panel" aria-labelledby="defects-title">
-      <div className="panel__head">
-        <h2 id="defects-title">Quality defects</h2>
-      </div>
+    <div className="quality">
+      <section className="panel panel--flush" aria-labelledby="defects-title">
+        <div className="panel__head panel__head--bar">
+          <h2 id="defects-title">
+            {showClosed ? 'All defects' : 'Open defects'} <span className="count mono">{list.length}</span>
+          </h2>
+          <label className="toggle">
+            <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} /> Show closed
+          </label>
+        </div>
+        {list.length === 0 ? (
+          <p className="empty empty--pad">No open defects.</p>
+        ) : (
+          <ul className="defects">
+            {list.map((d) => (
+              <li key={d.id} className={`defect defect--${d.severity} ${d.status === 'closed' ? 'defect--closed' : ''}`}>
+                <span className={`sev sev--${d.severity}`}>
+                  <span className="sev__mark" aria-hidden="true" />
+                  {d.severity}
+                </span>
+                <div className="defect__body">
+                  <p className="defect__desc">{d.description}</p>
+                  <p className="defect__meta">
+                    <span className="mono">{d.id.toUpperCase()}</span> · {stationName(d.stationId)} ·{' '}
+                    <span className="mono">{d.workOrderId.toUpperCase()}</span> · {d.category}
+                  </p>
+                </div>
+                <div className="defect__side">
+                  <time className="mono" dateTime={d.createdAt}>
+                    {formatStamp(d.createdAt)}
+                  </time>
+                  {d.status === 'open' ? (
+                    <button type="button" className="button button--secondary button--sm" disabled={closingId === d.id} onClick={() => void handleClose(d.id)}>
+                      {closingId === d.id ? 'Closing…' : 'Mark closed'}
+                    </button>
+                  ) : (
+                    <span className="tag tag--complete">Closed</span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-      <div className="defects">
+      <section className="panel" aria-labelledby="report-title">
         <form className="defect-form" onSubmit={handleSubmit} noValidate>
-          <h3>Report a defect</h3>
+          <div className="panel__head">
+            <h2 id="report-title">Report a defect</h2>
+          </div>
           <div className="field">
             <label htmlFor="df-station">Station</label>
             <select
@@ -107,35 +152,34 @@ export function DefectPanel({ stations, orders, defects, onCreate, onClose }: Pr
             {errors.workOrderId && <p id="df-order-err" className="field__error">{errors.workOrderId}</p>}
           </div>
 
-          <div className="field-row">
-            <div className="field">
-              <label htmlFor="df-category">Category</label>
-              <select id="df-category" value={form.category} onChange={(e) => update('category', e.target.value as DefectCategory)}>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <fieldset className="field">
-              <legend>Severity</legend>
-              <div className="segmented">
-                {SEVERITIES.map((s) => (
-                  <label key={s} className={`segmented__option ${form.severity === s ? 'segmented__option--on' : ''}`}>
-                    <input type="radio" name="severity" value={s} checked={form.severity === s} onChange={() => update('severity', s)} />
-                    {s}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
+          <div className="field">
+            <label htmlFor="df-category">Category</label>
+            <select id="df-category" value={form.category} onChange={(e) => update('category', e.target.value as DefectCategory)}>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </div>
+
+          <fieldset className="field">
+            <legend>Severity</legend>
+            <div className="segmented segmented--fill">
+              {SEVERITIES.map((s) => (
+                <label key={s} className={`segmented__option ${form.severity === s ? 'segmented__option--on' : ''}`}>
+                  <input type="radio" name="severity" value={s} checked={form.severity === s} onChange={() => update('severity', s)} />
+                  {s}
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
           <div className="field">
             <label htmlFor="df-desc">Description</label>
             <textarea
               id="df-desc"
-              rows={3}
+              rows={4}
               maxLength={DESCRIPTION_MAX}
               value={form.description}
               onChange={(e) => update('description', e.target.value)}
@@ -148,50 +192,14 @@ export function DefectPanel({ stations, orders, defects, onCreate, onClose }: Pr
             </p>
           </div>
 
-          <button className="button" type="submit" disabled={submitting}>
+          <button className="button button--primary" type="submit" disabled={submitting}>
             {submitting ? 'Saving…' : 'Report defect'}
           </button>
           <p className={`form-message ${message ? `form-message--${message.tone}` : ''}`} role="status" aria-live="polite">
             {message?.text}
           </p>
         </form>
-
-        <div className="defect-list">
-          <div className="defect-list__head">
-            <h3>{showClosed ? 'All defects' : 'Open defects'}</h3>
-            <label className="toggle">
-              <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} /> Show closed
-            </label>
-          </div>
-          {list.length === 0 ? (
-            <p className="empty">No open defects. Nice.</p>
-          ) : (
-            <ul>
-              {list.map((d) => (
-                <li key={d.id} className={`defect defect--${d.severity} ${d.status === 'closed' ? 'defect--closed' : ''}`}>
-                  <div className="defect__head">
-                    <span className={`pill pill--${d.severity}`}>{d.severity}</span>
-                    <span className="defect__meta">
-                      {d.id.toUpperCase()} · {stationName(d.stationId)} · {d.workOrderId.toUpperCase()} · {d.category}
-                    </span>
-                  </div>
-                  <p>{d.description}</p>
-                  <div className="defect__foot">
-                    <time dateTime={d.createdAt}>{new Date(d.createdAt).toLocaleString()}</time>
-                    {d.status === 'open' ? (
-                      <button type="button" className="button button--ghost" disabled={closingId === d.id} onClick={() => void handleClose(d.id)}>
-                        {closingId === d.id ? 'Closing…' : 'Mark closed'}
-                      </button>
-                    ) : (
-                      <span className="done-tag">closed</span>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-    </section>
+      </section>
+    </div>
   )
 }

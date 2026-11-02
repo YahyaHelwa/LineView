@@ -1,13 +1,32 @@
 import { useMemo, useState } from 'react'
-import { formatPercent } from '../lib/metrics'
-import type { WorkOrder } from '../types'
+import { orderState, type OrderState } from '../lib/metrics'
+import type { Station, WorkOrder } from '../types'
+import { Meter } from './Meter'
 
 type SortKey = 'id' | 'due' | 'progress' | 'priority'
 const PRIORITY_RANK = { high: 0, normal: 1, low: 2 } as const
 
 const progressOf = (o: WorkOrder) => (o.quantity > 0 ? o.completed / o.quantity : 0)
 
-export function WorkOrderTable({ orders, todayIso }: { orders: WorkOrder[]; todayIso: string }) {
+const STATE_LABEL: Record<OrderState, string> = {
+  complete: 'Complete',
+  overdue: 'Overdue',
+  'due-soon': 'Due soon',
+  'on-track': 'On track',
+}
+
+export function OrderStateTag({ state }: { state: OrderState }) {
+  return <span className={`tag tag--${state}`}>{STATE_LABEL[state]}</span>
+}
+
+interface Props {
+  orders: WorkOrder[]
+  stations: Station[]
+  todayIso: string
+  soonIso: string
+}
+
+export function WorkOrderTable({ orders, stations, todayIso, soonIso }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('due')
   const [ascending, setAscending] = useState(true)
 
@@ -24,6 +43,11 @@ export function WorkOrderTable({ orders, todayIso }: { orders: WorkOrder[]; toda
     return copy
   }, [orders, sortKey, ascending])
 
+  const states = orders.map((o) => orderState(o, todayIso, soonIso))
+  const overdue = states.filter((s) => s === 'overdue').length
+  const complete = states.filter((s) => s === 'complete').length
+  const stationName = (id: string) => stations.find((s) => s.id === id)?.name ?? ''
+
   function sortBy(key: SortKey) {
     if (key === sortKey) setAscending((a) => !a)
     else {
@@ -32,56 +56,70 @@ export function WorkOrderTable({ orders, todayIso }: { orders: WorkOrder[]; toda
     }
   }
 
-  const header = (key: SortKey, label: string) => (
-    <th scope="col" aria-sort={sortKey === key ? (ascending ? 'ascending' : 'descending') : 'none'}>
+  const header = (key: SortKey, label: string, className?: string) => (
+    <th scope="col" className={className} aria-sort={sortKey === key ? (ascending ? 'ascending' : 'descending') : 'none'}>
       <button type="button" className="th-button" onClick={() => sortBy(key)}>
         {label}
-        <span aria-hidden="true">{sortKey === key ? (ascending ? ' ▲' : ' ▼') : ''}</span>
+        <span className="th-button__arrow" aria-hidden="true">
+          {sortKey === key ? (ascending ? '▲' : '▼') : '↕'}
+        </span>
       </button>
     </th>
   )
 
   return (
-    <section className="panel" aria-labelledby="orders-title">
-      <div className="panel__head">
-        <h2 id="orders-title">Work orders</h2>
+    <section className="panel panel--flush" aria-labelledby="orders-title">
+      <div className="panel__head panel__head--bar">
+        <h2 id="orders-title" className="visually-hidden">
+          Work orders
+        </h2>
+        <p className="panel__summary">
+          <span className="mono">{orders.length}</span> orders · <span className="mono">{overdue}</span> overdue ·{' '}
+          <span className="mono">{complete}</span> complete
+        </p>
       </div>
       <div className="table-wrap">
-        <table className="orders">
+        <table className="grid grid--orders">
           <thead>
             <tr>
               {header('id', 'Order')}
               <th scope="col">Product</th>
+              <th scope="col">Station</th>
               {header('priority', 'Priority')}
               {header('progress', 'Progress')}
               {header('due', 'Due')}
+              <th scope="col">State</th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((o) => {
-              const done = o.completed >= o.quantity
-              const late = !done && o.due < todayIso
+              const state = orderState(o, todayIso, soonIso)
               return (
-                <tr key={o.id}>
-                  <td data-label="Order">{o.id.toUpperCase()}</td>
+                <tr key={o.id} className={state === 'overdue' ? 'row--overdue' : undefined}>
+                  <td data-label="Order" className="mono cell-id">
+                    {o.id.toUpperCase()}
+                  </td>
                   <td data-label="Product">{o.product}</td>
+                  <td data-label="Station">
+                    <span className="mono">{o.stationId.toUpperCase()}</span>
+                    <span className="cell-sub">{stationName(o.stationId)}</span>
+                  </td>
                   <td data-label="Priority">
-                    <span className={`pill pill--${o.priority}`}>{o.priority}</span>
+                    <span className={`prio prio--${o.priority}`}>{o.priority}</span>
                   </td>
                   <td data-label="Progress">
                     <div className="progress">
-                      <div className="meter meter--small" aria-hidden="true">
-                        <div className={`meter__fill ${done ? 'meter__fill--done' : ''}`} style={{ width: formatPercent(progressOf(o)) }} />
-                      </div>
-                      <span>
+                      <Meter value={progressOf(o)} size="sm" label={`${o.completed} of ${o.quantity} done`} />
+                      <span className="mono">
                         {o.completed}/{o.quantity}
                       </span>
                     </div>
                   </td>
-                  <td data-label="Due" className={late ? 'late' : ''}>
+                  <td data-label="Due" className="mono">
                     {o.due}
-                    {late && <span className="visually-hidden"> (overdue)</span>}
-                    {done && <span className="done-tag">done</span>}
+                  </td>
+                  <td data-label="State">
+                    <OrderStateTag state={state} />
                   </td>
                 </tr>
               )

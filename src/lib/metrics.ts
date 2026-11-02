@@ -38,9 +38,7 @@ export function summarize(stations: Station[], orders: WorkOrder[], defects: Def
   const lineOee = planned > 0 ? stations.reduce((sum, s) => sum + computeOee(s).oee * s.plannedMinutes, 0) / planned : 0
 
   const open = defects.filter((d) => d.status === 'open')
-  const soon = new Date(today)
-  soon.setUTCDate(soon.getUTCDate() + 3)
-  const soonIso = soon.toISOString().slice(0, 10)
+  const soonIso = addDaysIso(today, DUE_SOON_DAYS)
 
   const totalQty = orders.reduce((sum, o) => sum + o.quantity, 0)
   const totalDone = orders.reduce((sum, o) => sum + Math.min(o.completed, o.quantity), 0)
@@ -57,3 +55,30 @@ export function summarize(stations: Station[], orders: WorkOrder[], defects: Def
 }
 
 export const formatPercent = (x: number, digits = 0) => `${(clamp01(x) * 100).toFixed(digits)}%`
+
+/** OEE at or above this is on target (green); below OEE_WARN is an alarm (red). */
+export const OEE_TARGET = 0.65
+export const OEE_WARN = 0.45
+
+export type Tone = 'ok' | 'warn' | 'alarm'
+export const oeeTone = (oee: number): Tone => (oee >= OEE_TARGET ? 'ok' : oee >= OEE_WARN ? 'warn' : 'alarm')
+
+export type OrderState = 'complete' | 'overdue' | 'due-soon' | 'on-track'
+
+/** Where a work order stands relative to its due date (ISO dates compare as strings). */
+export function orderState(o: WorkOrder, todayIso: string, soonIso: string): OrderState {
+  if (o.completed >= o.quantity) return 'complete'
+  if (o.due < todayIso) return 'overdue'
+  if (o.due <= soonIso) return 'due-soon'
+  return 'on-track'
+}
+
+/** Unfinished orders due within this many days count as "due soon". */
+export const DUE_SOON_DAYS = 3
+
+/** ISO date `days` after `date` (UTC), e.g. for the "due within 3 days" window. */
+export function addDaysIso(date: Date, days: number): string {
+  const d = new Date(date)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
